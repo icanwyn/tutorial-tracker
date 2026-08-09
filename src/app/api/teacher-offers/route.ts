@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { GradeLevel } from "@/lib/types";
 import {
   deleteTeacherOffer,
+  listAllTeacherOffers,
   listCompiledOffers,
   listTeacherOffers,
   listTeacherOffersByRange,
@@ -17,6 +18,12 @@ export async function GET(req: NextRequest) {
   const startDate = req.nextUrl.searchParams.get("startDate");
   const endDate = req.nextUrl.searchParams.get("endDate");
   const yearRange = req.nextUrl.searchParams.get("year");
+  const all = req.nextUrl.searchParams.get("all");
+
+  if (all === "1" && teacherId) {
+    const offers = await listAllTeacherOffers(teacherId);
+    return NextResponse.json({ offers });
+  }
 
   if (yearRange === "1" || (startDate && endDate)) {
     const sy = schoolYearForDate();
@@ -143,7 +150,10 @@ export async function DELETE(req: NextRequest) {
       );
     }
     await deleteTeacherOffer(id, teacherId);
-    return NextResponse.json({ ok: true });
+    const offers = teacherId
+      ? await listAllTeacherOffers(teacherId)
+      : [];
+    return NextResponse.json({ ok: true, offers });
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "Server error" }, { status: 500 });

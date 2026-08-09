@@ -2630,8 +2630,10 @@ function offersForSessionWeek(
     : [];
   return db.teacherOffers.filter((o) => {
     if (teacherId && o.teacherId !== teacherId) return false;
-    if (o.sessionId === sessionId) return true;
+    // Prefer date match for the session week (calendar offers may be future weeks)
     if (weekDates.length && o.date && weekDates.includes(o.date)) return true;
+    // Legacy offers without a date, tied to this session only
+    if (!o.date && o.sessionId === sessionId) return true;
     return false;
   });
 }
@@ -2693,8 +2695,8 @@ export async function listCompiledOffers(
   const rows = db.teacherOffers
     .filter(
       (o) =>
-        o.sessionId === sessionId ||
-        (o.date && weekDates.includes(o.date))
+        (o.date && weekDates.includes(o.date)) ||
+        (!o.date && o.sessionId === sessionId)
     )
     .map((o) => {
       const teacher = db.people.find((p) => p.id === o.teacherId);
@@ -2734,17 +2736,39 @@ export async function listTeacherOffers(
   const db = await readDb();
   const session = db.sessions.find((s) => s.id === sessionId);
   const mon = weekOf || session?.weekOf;
-  let list = offersForSessionWeek(db, sessionId, teacherId);
+  let list: TeacherOffer[];
   if (mon) {
     const weekDates = DAYS.map((d) => dateForDay(mon, d));
     list = db.teacherOffers.filter((o) => {
       if (teacherId && o.teacherId !== teacherId) return false;
-      return (
-        (o.date && weekDates.includes(o.date)) || o.sessionId === sessionId
-      );
+      if (o.date && weekDates.includes(o.date)) return true;
+      // Legacy: no date, bound to this session
+      if (!o.date && o.sessionId === sessionId) return true;
+      return false;
     });
+  } else {
+    list = offersForSessionWeek(db, sessionId, teacherId);
   }
   return list
+    .map((o) => ({
+      ...o,
+      teacherName:
+        db.people.find((p) => p.id === o.teacherId)?.name ?? "Unknown",
+    }))
+    .sort(
+      (a, b) =>
+        (a.date || "").localeCompare(b.date || "") ||
+        a.subject.localeCompare(b.subject)
+    );
+}
+
+/** All offers for a teacher (any week) — calendar + quick-add */
+export async function listAllTeacherOffers(
+  teacherId: string
+): Promise<(TeacherOffer & { teacherName: string })[]> {
+  const db = await readDb();
+  return db.teacherOffers
+    .filter((o) => o.teacherId === teacherId)
     .map((o) => ({
       ...o,
       teacherName:
@@ -2811,14 +2835,15 @@ export async function upsertTeacherOffer(params: {
       return { error: "Offerings can only be on weekdays (Mon–Fri)." };
     }
 
-    // Link to active session that week if any
+    // Link only to a session whose week contains this offer date
     const weekMon = mondayOfWeek(new Date(date + "T12:00:00"));
-    const session =
+    let session =
       (params.sessionId &&
-        db.sessions.find((s) => s.id === params.sessionId)) ||
-      db.sessions.find(
-        (s) => s.status === "active" && s.weekOf === weekMon
-      );
+        db.sessions.find(
+          (s) => s.id === params.sessionId && s.weekOf === weekMon
+        )) ||
+      db.sessions.find((s) => s.status === "active" && s.weekOf === weekMon) ||
+      db.sessions.find((s) => s.weekOf === weekMon);
 
     const capacity = Math.max(1, Math.floor(params.capacity || 30));
 

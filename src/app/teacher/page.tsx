@@ -94,6 +94,7 @@ export default function TeacherPage() {
   const [myOffers, setMyOffers] = useState<
     {
       id: string;
+      date?: string;
       grades: ("7" | "8")[];
       subject: string;
       unitTitle: string;
@@ -190,12 +191,13 @@ export default function TeacherPage() {
   }, [session, person, attendDay]);
 
   const loadMyOffers = useCallback(async () => {
-    if (!session || !person) return;
+    if (!person) return;
+    // All offers for this teacher (calendar + quick-add, any week)
     const data = await api<{ offers: typeof myOffers }>(
-      `/api/teacher-offers?sessionId=${session.id}&teacherId=${person.id}`
+      `/api/teacher-offers?all=1&teacherId=${person.id}`
     );
     setMyOffers(data.offers || []);
-  }, [session, person]);
+  }, [person]);
 
   useEffect(() => {
     if (session && person) {
@@ -211,6 +213,13 @@ export default function TeacherPage() {
         .catch(() => {});
     }
   }, [session, person, loadRoster, loadAssignments, loadMyOffers]);
+
+  // Refresh published list whenever teacher opens the offerings tab
+  useEffect(() => {
+    if (session && person && tab === "offers") {
+      void loadMyOffers().catch(() => {});
+    }
+  }, [tab, session, person, loadMyOffers]);
 
   useEffect(() => {
     if (session && person && tab === "attendance") {
@@ -872,12 +881,75 @@ export default function TeacherPage() {
             <PriorityCalendarStrip sessionId={session.id} />
 
             {tab === "calendar" ? (
-              <div className="card card-pad">
-                <YearCalendar
-                  mode="teacher"
-                  teacherId={person?.id}
-                  sessionId={session.id}
-                />
+              <div className="stack">
+                <div className="card card-pad">
+                  <p className="muted" style={{ margin: 0, fontSize: "0.9rem" }}>
+                    Click a weekday to publish an offering for that date. It
+                    appears under <strong>My offerings → Your published
+                    offerings</strong> (with the date). Students only see the
+                    current week.
+                  </p>
+                </div>
+                <div className="card card-pad">
+                  <YearCalendar
+                    mode="teacher"
+                    teacherId={person?.id}
+                    sessionId={session.id}
+                    onOfferChanged={() => {
+                      void loadMyOffers();
+                      setSuccess(
+                        "Offering published — it now shows under My offerings."
+                      );
+                    }}
+                  />
+                </div>
+                {myOffers.length > 0 ? (
+                  <div className="card card-pad">
+                    <div
+                      className="row"
+                      style={{
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: 8,
+                      }}
+                    >
+                      <h3 className="section-title" style={{ margin: 0 }}>
+                        Your published offerings ({myOffers.length})
+                      </h3>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setTab("offers")}
+                      >
+                        Manage on My offerings →
+                      </button>
+                    </div>
+                    <ul
+                      className="muted"
+                      style={{
+                        margin: 0,
+                        paddingLeft: "1.1rem",
+                        fontSize: "0.9rem",
+                      }}
+                    >
+                      {myOffers.slice(0, 8).map((o) => (
+                        <li key={o.id} style={{ marginBottom: 4 }}>
+                          <strong style={{ color: "var(--ink)" }}>
+                            {o.date || "—"}
+                          </strong>
+                          {" · "}
+                          {o.subject}
+                          {o.unitTitle ? ` — ${o.unitTitle}` : ""}
+                          {" · Room "}
+                          {o.roomName}
+                        </li>
+                      ))}
+                      {myOffers.length > 8 ? (
+                        <li>…and {myOffers.length - 8} more</li>
+                      ) : null}
+                    </ul>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
@@ -885,10 +957,10 @@ export default function TeacherPage() {
               <div className="stack">
                 <div className="card card-pad">
                   <p className="muted" style={{ margin: 0, fontSize: "0.9rem" }}>
-                    Plan offerings on the{" "}
-                    <strong>school year calendar</strong> (Priority calendar tab)
-                    — click any day weeks ahead. This week&apos;s list is below;
-                    students only see the current week.
+                    <strong>Two ways to publish:</strong> (1) Quick add below for
+                    this session week, or (2) Priority calendar — click any
+                    weekday (including future weeks). Both write the same
+                    published list. Students only see the current week.
                   </p>
                   <button
                     className="btn btn-accent btn-sm"
@@ -1078,22 +1150,30 @@ export default function TeacherPage() {
                   </button>
                 </div>
 
-                <div className="card">
+                <div className="card" id="published-offerings">
                   <div className="card-pad" style={{ paddingBottom: 0 }}>
                     <h3 className="section-title">
                       Your published offerings ({myOffers.length})
                     </h3>
+                    <p
+                      className="muted"
+                      style={{ margin: "0.25rem 0 0", fontSize: "0.85rem" }}
+                    >
+                      Includes quick-add and calendar offerings (all dates).
+                    </p>
                   </div>
                   {myOffers.length === 0 ? (
                     <div className="empty">
-                      No offerings yet. Add at least one row so it appears on the
-                      admin compiled sheet.
+                      No offerings yet. Use quick add above or click a day on the
+                      priority calendar so it appears here and on the admin
+                      compiled sheet.
                     </div>
                   ) : (
                     <div className="table-wrap" style={{ border: "none" }}>
                       <table className="data">
                         <thead>
                           <tr>
+                            <th>Date</th>
                             <th>Grade</th>
                             <th>Subject</th>
                             <th>Unit / title</th>
@@ -1105,6 +1185,9 @@ export default function TeacherPage() {
                         <tbody>
                           {myOffers.map((o) => (
                             <tr key={o.id}>
+                              <td>
+                                <strong>{o.date || "—"}</strong>
+                              </td>
                               <td>{o.grades.join("/")}</td>
                               <td>{o.subject}</td>
                               <td>{o.unitTitle}</td>
@@ -1123,7 +1206,7 @@ export default function TeacherPage() {
                                 <button
                                   className="btn btn-danger btn-sm"
                                   onClick={async () => {
-                                    if (!person || !session) return;
+                                    if (!person) return;
                                     const data = await api<{
                                       offers: typeof myOffers;
                                     }>("/api/teacher-offers", {
@@ -1131,10 +1214,10 @@ export default function TeacherPage() {
                                       body: JSON.stringify({
                                         id: o.id,
                                         teacherId: person.id,
-                                        sessionId: session.id,
                                       }),
                                     });
-                                    setMyOffers(data.offers);
+                                    setMyOffers(data.offers || []);
+                                    setSuccess("Offering removed.");
                                   }}
                                 >
                                   Remove

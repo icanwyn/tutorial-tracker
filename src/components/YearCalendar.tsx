@@ -59,6 +59,8 @@ type Props = {
   /** When teacher/admin is in a live session, pass for linking */
   sessionId?: string;
   onWeekChange?: (weekOf: string) => void;
+  /** Called after a teacher successfully creates/updates/deletes an offering */
+  onOfferChanged?: () => void;
 };
 
 export function YearCalendar({
@@ -66,6 +68,7 @@ export function YearCalendar({
   teacherId,
   sessionId,
   onWeekChange,
+  onOfferChanged,
 }: Props) {
   /** Students only ever see one week at a time — no month grid */
   const studentWeekOnly = mode === "student";
@@ -344,6 +347,7 @@ export function YearCalendar({
       });
       setOfferDate(null);
       await load();
+      onOfferChanged?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save offering");
     } finally {
@@ -359,6 +363,7 @@ export function YearCalendar({
       body: JSON.stringify({ id, teacherId }),
     });
     await load();
+    onOfferChanged?.();
   }
 
   if (!data) {
