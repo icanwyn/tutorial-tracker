@@ -222,7 +222,7 @@ export async function createPerson(
     if (role === "admin") {
       if (!canBecomeAdmin(db, name)) {
         return {
-          error: `“${name.trim()}” is not authorized as an admin. Bootstrap admins: ${getBootstrapAdminNames().join(", ")}. An existing admin can grant you access.`,
+          error: `“${name.trim()}” is not authorized as an admin. Ask an existing admin to grant you access, or use a bootstrap admin name.`,
         };
       }
       const existing = db.people.find(

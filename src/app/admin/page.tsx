@@ -107,6 +107,8 @@ type Overview = {
 export default function AdminPage() {
   const [person, setPerson] = useState<Person | null>(null);
   const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordRequired, setPasswordRequired] = useState(false);
   const [sessionName, setSessionName] = useState("Schoolwide Tutorial");
   const [session, setSession] = useState<TutorialSession | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
@@ -186,8 +188,19 @@ export default function AdminPage() {
 
   useEffect(() => {
     async function boot() {
+      try {
+        const meta = await api<{ passwordRequired?: boolean }>("/api/auth");
+        setPasswordRequired(!!meta.passwordRequired);
+      } catch {
+        setPasswordRequired(false);
+      }
+
       const p = loadPerson();
       let admin = p?.role === "admin" ? p : null;
+      // If a site password is required, don't auto-resume from localStorage alone
+      // (avoids anyone with the device staying admin forever without re-auth).
+      // Soft: still try resume; full password gate is on new sign-in. For stronger
+      // lock, clear person when password required.
       if (admin) {
         setPerson(admin);
         setName(admin.name);
@@ -441,14 +454,23 @@ export default function AdminPage() {
 
   async function register() {
     setError("");
+    if (passwordRequired && !password.trim()) {
+      setError("Admin password is required.");
+      return;
+    }
     setLoading(true);
     try {
       const { person: p } = await api<{ person: Person }>("/api/auth", {
         method: "POST",
-        body: JSON.stringify({ name, role: "admin" }),
+        body: JSON.stringify({
+          name,
+          role: "admin",
+          password: password || undefined,
+        }),
       });
       savePerson(p);
       setPerson(p);
+      setPassword(""); // don't keep password in React state
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
     } finally {
@@ -666,9 +688,9 @@ export default function AdminPage() {
           <div className="card card-pad" style={{ maxWidth: 420 }}>
             <h2 className="section-title">Admin sign-in</h2>
             <p className="muted" style={{ marginTop: 0, fontSize: "0.9rem" }}>
-              First admins are hardcoded (e.g.{" "}
-              <strong>Lisa</strong>, <strong>Principal Lee</strong>). After you
-              sign in, you can grant other admins access.
+              Sign in with an authorized admin name
+              {passwordRequired ? " and the site admin password" : ""}. After
+              you sign in, you can grant other admins access by name.
             </p>
             <div className="stack">
               <div className="field">
@@ -677,16 +699,58 @@ export default function AdminPage() {
                   className="input"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Principal Lee"
+                  placeholder="Your name"
+                  autoComplete="username"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && name.trim()) {
+                      if (passwordRequired && !password.trim()) {
+                        (
+                          document.getElementById(
+                            "admin-password"
+                          ) as HTMLInputElement | null
+                        )?.focus();
+                        return;
+                      }
+                      void register();
+                    }
+                  }}
+                />
+              </div>
+              <div className="field">
+                <label>
+                  Admin password
+                  {!passwordRequired ? (
+                    <span className="muted" style={{ fontWeight: 400 }}>
+                      {" "}
+                      (optional until configured)
+                    </span>
+                  ) : null}
+                </label>
+                <input
+                  id="admin-password"
+                  className="input"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={
+                    passwordRequired
+                      ? "Required"
+                      : "Set ADMIN_PASSWORD on the server to require this"
+                  }
+                  autoComplete="current-password"
                   onKeyDown={(e) =>
-                    e.key === "Enter" && name.trim() && register()
+                    e.key === "Enter" && name.trim() && void register()
                   }
                 />
               </div>
               <button
                 className="btn btn-primary"
-                disabled={!name.trim() || loading}
-                onClick={register}
+                disabled={
+                  !name.trim() ||
+                  loading ||
+                  (passwordRequired && !password.trim())
+                }
+                onClick={() => void register()}
               >
                 Continue as admin
               </button>

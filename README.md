@@ -65,6 +65,19 @@ Open [http://localhost:3000](http://localhost:3000).
 
 Browser localStorage only remembers *who you are* on that device. Rosters, rooms, and attendance live on the server store.
 
+### Admin password
+
+Right now an authorized **name** is required; the login form no longer lists bootstrap names.
+
+Set a site password for production:
+
+```bash
+# .env.local or Vercel env
+ADMIN_PASSWORD=your-strong-secret
+```
+
+When `ADMIN_PASSWORD` is set, admin sign-in needs **name + password**. Teachers/students are unchanged. Later we can add per-admin passwords and signed sessions.
+
 ### Deploy (GitHub + Vercel)
 
 1. Push this repo to GitHub  
