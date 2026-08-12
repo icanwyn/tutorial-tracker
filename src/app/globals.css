@@ -576,6 +576,19 @@ table.data tbody tr:hover {
   font-size: 0.9rem;
 }
 
+/* Student page — Your week Mon–Fri calendar row */
+.your-week-cal {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 800px) {
+  .your-week-cal {
+    grid-template-columns: 1fr;
+  }
+}
+
 .code-pill {
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-weight: 800;

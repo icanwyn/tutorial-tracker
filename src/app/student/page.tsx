@@ -5,14 +5,16 @@ import Link from "next/link";
 import { TopBar } from "@/components/TopBar";
 import { YearCalendar } from "@/components/YearCalendar";
 import { api, loadStudentId, saveStudentId } from "@/lib/client";
-import { dateForDay, formatWeekLabel } from "@/lib/dates";
+import { dateForDay, formatWeekLabel, todayDay } from "@/lib/dates";
 import type { DayOfWeek, GradeLevel, Student, TutorialSession } from "@/lib/types";
 import { DAYS } from "@/lib/types";
 
-/** Chalky dark grey for Your week day rows */
-const CHALK_GREY = "#3f4348";
-const CHALK_TEXT = "#e6e8eb";
-const CHALK_MUTED = "#b8bdc4";
+/** Calendar day cells — navy/slate with light text */
+const CELL_BG = "linear-gradient(165deg, #1e293b 0%, #0f172a 100%)";
+const CELL_BG_TODAY = "linear-gradient(165deg, #334155 0%, #1e293b 100%)";
+const CELL_TEXT = "#e2e8f0";
+const CELL_MUTED = "#94a3b8";
+const CELL_BORDER = "rgba(148, 163, 184, 0.28)";
 
 type SelectionConfirm = {
   day: DayOfWeek;
@@ -34,6 +36,16 @@ function formatDayDate(weekOf: string | undefined, day: DayOfWeek): string {
   const weekday = d.toLocaleDateString("en-US", { weekday: "short" });
   const md = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   return `${weekday} · ${md}`;
+}
+
+/** Month + day only, e.g. "Aug 12" */
+function formatMonthDay(weekOf: string | undefined, day: DayOfWeek): string {
+  if (!weekOf) return "";
+  const iso = dateForDay(weekOf, day);
+  return new Date(iso + "T12:00:00").toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function formatRemain(ms: number): string {
@@ -807,121 +819,177 @@ export default function StudentPage() {
                 ) : null}
               </div>
               <p className="muted" style={{ margin: "0 0 0.75rem", fontSize: "0.85rem" }}>
-                This week only (Mon–Fri). Report to the room listed each day.
-                After you pick a room yourself, you have 5 minutes to change it.
+                Mon–Fri calendar. Report to the room shown each day. After you
+                pick a room yourself, you have 5 minutes to change it.
               </p>
-              <div className="stack" style={{ gap: "0.5rem" }}>
-                {byDay.map(({ day, dateLabel, item, choice }) => {
+              <div className="your-week-cal">
+                {byDay.map(({ day, item, choice }) => {
+                  const isToday = todayDay() === day;
                   const canEditItem =
                     item &&
                     (item.type === "open_study" ||
                       item.type === "student_choice" ||
                       choice?.canEdit) &&
                     isStillEditable(item.editExpiresAt || choice?.editExpiresAt);
+                  const monthDay = formatMonthDay(weekOf, day);
                   return (
                     <div
                       key={day}
-                      className="row"
                       style={{
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        gap: 12,
-                        padding: "0.75rem 0.9rem",
-                        background: CHALK_GREY,
-                        color: CHALK_TEXT,
-                        borderRadius: 12,
-                        border: "1px solid rgba(255,255,255,0.08)",
+                        minHeight: 148,
+                        padding: "0.75rem 0.7rem",
+                        borderRadius: 14,
+                        background: isToday ? CELL_BG_TODAY : CELL_BG,
+                        color: CELL_TEXT,
+                        border: isToday
+                          ? "2px solid var(--gold)"
+                          : `1px solid ${CELL_BORDER}`,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 6,
+                        boxShadow: "0 8px 20px rgba(15, 23, 42, 0.25)",
                       }}
                     >
-                      <div style={{ minWidth: 0 }}>
-                        <strong style={{ color: CHALK_TEXT }}>{day}</strong>
-                        <div
-                          style={{
-                            fontSize: "0.78rem",
-                            color: CHALK_MUTED,
-                            marginTop: 2,
-                          }}
-                        >
-                          {dateLabel}
-                        </div>
-                      </div>
-                      {item ? (
-                        <div style={{ textAlign: "right", color: CHALK_TEXT }}>
-                          <div>
-                            <span
-                              className="badge badge-blue"
-                              style={{ marginRight: 8 }}
-                            >
-                              {item.type === "required"
-                                ? "Required"
-                                : "Open / placed"}
-                            </span>
-                          </div>
+                      <div
+                        className="row"
+                        style={{
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          gap: 4,
+                        }}
+                      >
+                        <div>
                           <div
                             style={{
-                              marginTop: 6,
                               fontWeight: 800,
                               fontSize: "1.05rem",
-                              color: CHALK_TEXT,
+                              letterSpacing: "-0.02em",
+                              color: CELL_TEXT,
                             }}
                           >
-                            Report to Room {item.roomName}
+                            {day}
                           </div>
                           <div
                             style={{
-                              fontSize: "0.82rem",
-                              color: CHALK_MUTED,
+                              fontSize: "0.78rem",
+                              color: CELL_MUTED,
                               marginTop: 2,
                             }}
                           >
-                            {item.teacherName}
+                            {monthDay}
                           </div>
-                          {canEditItem ? (
-                            <div className="row" style={{ justifyContent: "flex-end", marginTop: 8, gap: 6 }}>
-                              <span
-                                style={{
-                                  fontSize: "0.75rem",
-                                  color: "var(--gold-bright)",
-                                  fontWeight: 650,
-                                }}
-                              >
-                                Edit {formatRemain(
-                                  remainMs(
-                                    item.editExpiresAt || choice?.editExpiresAt
-                                  )
-                                )}
-                              </span>
-                              <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                disabled={loading}
-                                onClick={() =>
-                                  startEditDay(
-                                    day,
-                                    item.type === "open_study" ? "open" : "required"
-                                  )
-                                }
-                              >
-                                Change
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-danger btn-sm"
-                                disabled={loading}
-                                onClick={() => void clearSelection(day)}
-                              >
-                                Clear
-                              </button>
-                            </div>
-                          ) : null}
                         </div>
-                      ) : choice?.needsChoice ? (
-                        <span className="badge badge-amber">Choose room ↑</span>
-                      ) : (
-                        <span style={{ color: CHALK_MUTED, textAlign: "right" }}>
-                          Free — pick an open offering or wait for auto-place
-                        </span>
-                      )}
+                        {isToday ? (
+                          <span
+                            className="badge"
+                            style={{
+                              background: "rgba(201, 162, 39, 0.2)",
+                              color: "var(--gold-bright)",
+                              border: "1px solid rgba(201, 162, 39, 0.4)",
+                              fontSize: "0.65rem",
+                            }}
+                          >
+                            Today
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <div style={{ flex: 1, minHeight: 0 }}>
+                        {item ? (
+                          <>
+                            <span
+                              className={
+                                item.type === "required"
+                                  ? "badge badge-blue"
+                                  : "badge badge-teal"
+                              }
+                              style={{ fontSize: "0.65rem" }}
+                            >
+                              {item.type === "required" ? "Required" : "Open"}
+                            </span>
+                            <div
+                              style={{
+                                marginTop: 8,
+                                fontWeight: 800,
+                                fontSize: "0.95rem",
+                                lineHeight: 1.25,
+                                color: CELL_TEXT,
+                              }}
+                            >
+                              Room {item.roomName}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: "0.75rem",
+                                color: CELL_MUTED,
+                                marginTop: 4,
+                                lineHeight: 1.3,
+                              }}
+                            >
+                              {item.teacherName}
+                            </div>
+                          </>
+                        ) : choice?.needsChoice ? (
+                          <span className="badge badge-amber">Choose room ↑</span>
+                        ) : (
+                          <div
+                            style={{
+                              fontSize: "0.8rem",
+                              color: CELL_MUTED,
+                              lineHeight: 1.35,
+                              marginTop: 4,
+                            }}
+                          >
+                            Free — pick an open offering below
+                          </div>
+                        )}
+                      </div>
+
+                      {canEditItem ? (
+                        <div
+                          className="row"
+                          style={{ gap: 4, flexWrap: "wrap", marginTop: "auto" }}
+                        >
+                          <span
+                            style={{
+                              fontSize: "0.68rem",
+                              color: "var(--gold-bright)",
+                              fontWeight: 650,
+                              width: "100%",
+                            }}
+                          >
+                            Edit{" "}
+                            {formatRemain(
+                              remainMs(
+                                item.editExpiresAt || choice?.editExpiresAt
+                              )
+                            )}
+                          </span>
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            disabled={loading}
+                            style={{ flex: 1, minWidth: 0, padding: "0.3rem 0.4rem" }}
+                            onClick={() =>
+                              startEditDay(
+                                day,
+                                item.type === "open_study" ? "open" : "required"
+                              )
+                            }
+                          >
+                            Change
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-danger btn-sm"
+                            disabled={loading}
+                            style={{ flex: 1, minWidth: 0, padding: "0.3rem 0.4rem" }}
+                            onClick={() => void clearSelection(day)}
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}
