@@ -244,27 +244,42 @@ export function PriorityCalendar({
             style={{
               textAlign: "left",
               border: d.isToday
-                ? "2px solid var(--brand)"
-                : "1px solid var(--border)",
+                ? "2px solid #f5efd8"
+                : "1px solid rgba(245, 239, 216, 0.28)",
               borderRadius: 14,
               padding: compact ? "0.75rem" : "1rem",
-              background: d.primarySubject
-                ? "linear-gradient(180deg, #eff6ff 0%, #fff 70%)"
-                : "#fff",
+              background: d.isToday
+                ? "linear-gradient(165deg, #a68528 0%, #6b5618 100%)"
+                : "linear-gradient(165deg, #8a7020 0%, #5c4a12 55%, #4a3c0e 100%)",
               cursor: editable ? "pointer" : "default",
-              boxShadow: "var(--shadow)",
+              boxShadow: "0 8px 24px rgba(74, 60, 14, 0.35)",
+              color: "#f5efd8",
             }}
           >
             <div
               className="row"
               style={{ justifyContent: "space-between", marginBottom: 6 }}
             >
-              <strong>{d.day}</strong>
+              <strong style={{ color: "#f8f1c8" }}>{d.day}</strong>
               {d.isToday ? (
-                <span className="badge badge-blue">Today</span>
+                <span
+                  className="badge"
+                  style={{
+                    background: "rgba(245, 239, 216, 0.2)",
+                    color: "#fff8dc",
+                    border: "1px solid rgba(245, 239, 216, 0.35)",
+                  }}
+                >
+                  Today
+                </span>
               ) : null}
             </div>
-            <div className="muted" style={{ fontSize: "0.8rem" }}>
+            <div
+              style={{
+                fontSize: "0.8rem",
+                color: "rgba(245, 239, 216, 0.72)",
+              }}
+            >
               {d.dateLabel}
             </div>
             <div
@@ -273,15 +288,20 @@ export function PriorityCalendar({
                 fontWeight: 750,
                 fontSize: compact ? "0.95rem" : "1.1rem",
                 letterSpacing: "-0.02em",
-                color: d.primarySubject ? "var(--brand)" : "var(--muted)",
+                color: d.primarySubject
+                  ? "#fff8dc"
+                  : "rgba(245, 239, 216, 0.55)",
               }}
             >
               {d.primarySubject || "No priority set"}
             </div>
             {d.subjectOrder.length > 1 ? (
               <div
-                className="muted"
-                style={{ fontSize: "0.75rem", marginTop: 6 }}
+                style={{
+                  fontSize: "0.75rem",
+                  marginTop: 6,
+                  color: "rgba(245, 239, 216, 0.68)",
+                }}
               >
                 Then: {d.subjectOrder.slice(1, 4).join(" → ")}
                 {d.subjectOrder.length > 4 ? "…" : ""}
@@ -289,8 +309,11 @@ export function PriorityCalendar({
             ) : null}
             {d.note ? (
               <div
-                className="muted"
-                style={{ fontSize: "0.75rem", marginTop: 6 }}
+                style={{
+                  fontSize: "0.75rem",
+                  marginTop: 6,
+                  color: "rgba(245, 239, 216, 0.68)",
+                }}
               >
                 {d.note}
               </div>
@@ -454,13 +477,23 @@ export function PriorityCalendarStrip({ sessionId }: { sessionId: string }) {
   if (!calendar) return null;
 
   return (
-    <div className="card card-pad">
+    <div
+      className="card card-pad"
+      style={{
+        background:
+          "linear-gradient(165deg, #8a7020 0%, #5c4a12 55%, #4a3c0e 100%)",
+        border: "1px solid #6b5618",
+        color: "#f5efd8",
+      }}
+    >
       <div
         className="row"
         style={{ justifyContent: "space-between", marginBottom: 8 }}
       >
-        <strong style={{ fontSize: "0.95rem" }}>Subject priority this week</strong>
-        <span className="muted" style={{ fontSize: "0.8rem" }}>
+        <strong style={{ fontSize: "0.95rem", color: "#f8f1c8" }}>
+          Subject priority this week
+        </strong>
+        <span style={{ fontSize: "0.8rem", color: "rgba(245, 239, 216, 0.75)" }}>
           {calendar.weekLabel}
         </span>
       </div>
@@ -474,19 +507,32 @@ export function PriorityCalendarStrip({ sessionId }: { sessionId: string }) {
               padding: "0.5rem 0.55rem",
               borderRadius: 10,
               border: d.isToday
-                ? "2px solid var(--brand)"
-                : "1px solid var(--border)",
-              background: d.primarySubject ? "var(--brand-soft)" : "#f8fafc",
+                ? "2px solid #f5efd8"
+                : "1px solid rgba(245, 239, 216, 0.22)",
+              background: d.isToday
+                ? "rgba(245, 239, 216, 0.22)"
+                : "rgba(0, 0, 0, 0.22)",
               textAlign: "center",
+              color: "#f5efd8",
             }}
           >
-            <div style={{ fontWeight: 700, fontSize: "0.8rem" }}>{d.day}</div>
+            <div
+              style={{
+                fontWeight: 700,
+                fontSize: "0.8rem",
+                color: "#f8f1c8",
+              }}
+            >
+              {d.day}
+            </div>
             <div
               style={{
                 fontSize: "0.72rem",
                 fontWeight: 650,
                 marginTop: 4,
-                color: d.primarySubject ? "var(--brand)" : "var(--muted)",
+                color: d.primarySubject
+                  ? "#fff8dc"
+                  : "rgba(245, 239, 216, 0.55)",
               }}
             >
               {d.primarySubject || "—"}
