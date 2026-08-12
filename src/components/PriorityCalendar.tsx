@@ -481,17 +481,17 @@ export function PriorityCalendarStrip({ sessionId }: { sessionId: string }) {
         background:
           "linear-gradient(165deg, #8a7020 0%, #5c4a12 55%, #4a3c0e 100%)",
         border: "1px solid #6b5618",
-        color: "#a8aeb8",
+        color: "#7d8490",
       }}
     >
       <div
         className="row"
         style={{ justifyContent: "space-between", marginBottom: 8 }}
       >
-        <strong style={{ fontSize: "0.95rem", color: "#b8bec8" }}>
+        <strong style={{ fontSize: "0.95rem", color: "#8a919c" }}>
           Subject priority this week
         </strong>
-        <span style={{ fontSize: "0.8rem", color: "#8b929e" }}>
+        <span style={{ fontSize: "0.8rem", color: "#6b7280" }}>
           {calendar.weekLabel}
         </span>
       </div>
@@ -505,20 +505,20 @@ export function PriorityCalendarStrip({ sessionId }: { sessionId: string }) {
               padding: "0.5rem 0.55rem",
               borderRadius: 10,
               border: d.isToday
-                ? "2px solid #a8aeb8"
-                : "1px solid rgba(168, 174, 184, 0.3)",
+                ? "2px solid #7d8490"
+                : "1px solid rgba(107, 114, 128, 0.35)",
               background: d.isToday
-                ? "rgba(168, 174, 184, 0.12)"
-                : "rgba(0, 0, 0, 0.22)",
+                ? "rgba(107, 114, 128, 0.14)"
+                : "rgba(0, 0, 0, 0.28)",
               textAlign: "center",
-              color: "#a8aeb8",
+              color: "#7d8490",
             }}
           >
             <div
               style={{
                 fontWeight: 700,
                 fontSize: "0.8rem",
-                color: "#b8bec8",
+                color: "#8a919c",
               }}
             >
               {d.day}
@@ -528,7 +528,7 @@ export function PriorityCalendarStrip({ sessionId }: { sessionId: string }) {
                 fontSize: "0.72rem",
                 fontWeight: 650,
                 marginTop: 4,
-                color: d.primarySubject ? "#a8aeb8" : "#7a8190",
+                color: d.primarySubject ? "#7d8490" : "#5f6672",
               }}
             >
               {d.primarySubject || "—"}
