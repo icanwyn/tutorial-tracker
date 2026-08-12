@@ -244,8 +244,8 @@ export function PriorityCalendar({
             style={{
               textAlign: "left",
               border: d.isToday
-                ? "2px solid #f5efd8"
-                : "1px solid rgba(245, 239, 216, 0.28)",
+                ? "2px solid #d1d5db"
+                : "1px solid rgba(209, 213, 219, 0.28)",
               borderRadius: 14,
               padding: compact ? "0.75rem" : "1rem",
               background: d.isToday
@@ -253,21 +253,21 @@ export function PriorityCalendar({
                 : "linear-gradient(165deg, #8a7020 0%, #5c4a12 55%, #4a3c0e 100%)",
               cursor: editable ? "pointer" : "default",
               boxShadow: "0 8px 24px rgba(74, 60, 14, 0.35)",
-              color: "#f5efd8",
+              color: "#d1d5db",
             }}
           >
             <div
               className="row"
               style={{ justifyContent: "space-between", marginBottom: 6 }}
             >
-              <strong style={{ color: "#f8f1c8" }}>{d.day}</strong>
+              <strong style={{ color: "#e5e7eb" }}>{d.day}</strong>
               {d.isToday ? (
                 <span
                   className="badge"
                   style={{
-                    background: "rgba(245, 239, 216, 0.2)",
-                    color: "#fff8dc",
-                    border: "1px solid rgba(245, 239, 216, 0.35)",
+                    background: "rgba(209, 213, 219, 0.16)",
+                    color: "#d1d5db",
+                    border: "1px solid rgba(209, 213, 219, 0.35)",
                   }}
                 >
                   Today
@@ -277,7 +277,7 @@ export function PriorityCalendar({
             <div
               style={{
                 fontSize: "0.8rem",
-                color: "rgba(245, 239, 216, 0.72)",
+                color: "#9ca3af",
               }}
             >
               {d.dateLabel}
@@ -288,9 +288,7 @@ export function PriorityCalendar({
                 fontWeight: 750,
                 fontSize: compact ? "0.95rem" : "1.1rem",
                 letterSpacing: "-0.02em",
-                color: d.primarySubject
-                  ? "#fff8dc"
-                  : "rgba(245, 239, 216, 0.55)",
+                color: d.primarySubject ? "#d1d5db" : "#9ca3af",
               }}
             >
               {d.primarySubject || "No priority set"}
@@ -300,7 +298,7 @@ export function PriorityCalendar({
                 style={{
                   fontSize: "0.75rem",
                   marginTop: 6,
-                  color: "rgba(245, 239, 216, 0.68)",
+                  color: "#9ca3af",
                 }}
               >
                 Then: {d.subjectOrder.slice(1, 4).join(" → ")}
@@ -312,7 +310,7 @@ export function PriorityCalendar({
                 style={{
                   fontSize: "0.75rem",
                   marginTop: 6,
-                  color: "rgba(245, 239, 216, 0.68)",
+                  color: "#9ca3af",
                 }}
               >
                 {d.note}
@@ -483,17 +481,17 @@ export function PriorityCalendarStrip({ sessionId }: { sessionId: string }) {
         background:
           "linear-gradient(165deg, #8a7020 0%, #5c4a12 55%, #4a3c0e 100%)",
         border: "1px solid #6b5618",
-        color: "#f5efd8",
+        color: "#d1d5db",
       }}
     >
       <div
         className="row"
         style={{ justifyContent: "space-between", marginBottom: 8 }}
       >
-        <strong style={{ fontSize: "0.95rem", color: "#f8f1c8" }}>
+        <strong style={{ fontSize: "0.95rem", color: "#e5e7eb" }}>
           Subject priority this week
         </strong>
-        <span style={{ fontSize: "0.8rem", color: "rgba(245, 239, 216, 0.75)" }}>
+        <span style={{ fontSize: "0.8rem", color: "#9ca3af" }}>
           {calendar.weekLabel}
         </span>
       </div>
@@ -507,20 +505,20 @@ export function PriorityCalendarStrip({ sessionId }: { sessionId: string }) {
               padding: "0.5rem 0.55rem",
               borderRadius: 10,
               border: d.isToday
-                ? "2px solid #f5efd8"
-                : "1px solid rgba(245, 239, 216, 0.22)",
+                ? "2px solid #d1d5db"
+                : "1px solid rgba(209, 213, 219, 0.28)",
               background: d.isToday
-                ? "rgba(245, 239, 216, 0.22)"
+                ? "rgba(209, 213, 219, 0.14)"
                 : "rgba(0, 0, 0, 0.22)",
               textAlign: "center",
-              color: "#f5efd8",
+              color: "#d1d5db",
             }}
           >
             <div
               style={{
                 fontWeight: 700,
                 fontSize: "0.8rem",
-                color: "#f8f1c8",
+                color: "#e5e7eb",
               }}
             >
               {d.day}
@@ -530,9 +528,7 @@ export function PriorityCalendarStrip({ sessionId }: { sessionId: string }) {
                 fontSize: "0.72rem",
                 fontWeight: 650,
                 marginTop: 4,
-                color: d.primarySubject
-                  ? "#fff8dc"
-                  : "rgba(245, 239, 216, 0.55)",
+                color: d.primarySubject ? "#d1d5db" : "#9ca3af",
               }}
             >
               {d.primarySubject || "—"}
