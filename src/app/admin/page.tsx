@@ -111,6 +111,8 @@ export default function AdminPage() {
   const [passwordRequired, setPasswordRequired] = useState(false);
   const [sessionName, setSessionName] = useState("Schoolwide Tutorial");
   const [session, setSession] = useState<TutorialSession | null>(null);
+  const [showNewSessionForm, setShowNewSessionForm] = useState(false);
+  const [success, setSuccess] = useState("");
   const [overview, setOverview] = useState<Overview | null>(null);
   const [day, setDay] = useState<DayOfWeek>("Mon");
   const [tab, setTab] = useState<
@@ -472,6 +474,36 @@ export default function AdminPage() {
     return () => window.clearTimeout(timer);
   }, [search, tab, filteredStudents]);
 
+  /** Pick up the live schoolwide session (or last closed one) after admin signs in */
+  async function resumeSessionForAdmin(adminId: string) {
+    const sid = loadSessionId();
+    const q = new URLSearchParams({ adminId });
+    if (sid) q.set("sessionId", sid);
+    const data = await api<{ session: TutorialSession | null }>(
+      `/api/sessions?${q.toString()}`
+    );
+    if (data.session) {
+      setSession(data.session);
+      saveSessionId(data.session.id);
+      return data.session;
+    }
+    // Also try any active schoolwide session without relying on stored id
+    try {
+      const active = await api<{ sessions: TutorialSession[] }>(
+        "/api/sessions?active=1"
+      );
+      const live = active.sessions?.[0];
+      if (live) {
+        setSession(live);
+        saveSessionId(live.id);
+        return live;
+      }
+    } catch {
+      /* ignore */
+    }
+    return null;
+  }
+
   async function register() {
     setError("");
     if (passwordRequired && !password.trim()) {
@@ -491,6 +523,15 @@ export default function AdminPage() {
       savePerson(p);
       setPerson(p);
       setPassword(""); // don't keep password in React state
+      // Always return to the existing tutorial call when one is live
+      const resumed = await resumeSessionForAdmin(p.id);
+      if (resumed) {
+        setSuccess(
+          resumed.status === "active"
+            ? `Welcome back — resumed live session “${resumed.name}” (code ${resumed.joinCode}).`
+            : `Welcome back — session “${resumed.name}” is closed. Reopen it or start a new code if compromised.`
+        );
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
     } finally {
@@ -501,6 +542,14 @@ export default function AdminPage() {
   async function startSession() {
     if (!person) return;
     setError("");
+    if (
+      session?.status === "active" &&
+      !confirm(
+        `Starting a new tutorial call will close the current live session (code ${session.joinCode}) and issue a new join code. Teachers must use the new code. Continue?`
+      )
+    ) {
+      return;
+    }
     setLoading(true);
     try {
       const { session: s } = await api<{ session: TutorialSession }>(
@@ -512,6 +561,11 @@ export default function AdminPage() {
       );
       saveSessionId(s.id);
       setSession(s);
+      setOverview(null);
+      setShowNewSessionForm(false);
+      setSuccess(
+        `New tutorial call started. Share join code ${s.joinCode} with teachers.`
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
     } finally {
@@ -568,15 +622,20 @@ export default function AdminPage() {
   }
 
   function beginNewSessionForm() {
-    setSession(null);
+    // Keep current session object until they confirm start — only clear overview
+    // so the UI can offer “new code” while still showing the live call.
     setOverview(null);
-    // keep localStorage until a new session is created
+    setShowNewSessionForm(true);
   }
 
   function signOut() {
     clearPerson();
     setPerson(null);
     setSession(null);
+    setOverview(null);
+    setShowNewSessionForm(false);
+    setSuccess("");
+    // Keep last sessionId in localStorage so re-login can resume that call
   }
 
   function openStudent(studentId: string) {
@@ -703,6 +762,7 @@ export default function AdminPage() {
       />
       <main className="container stack" style={{ padding: "1.5rem 0 3rem" }}>
         {error ? <div className="error-banner">{error}</div> : null}
+        {success ? <div className="success-banner">{success}</div> : null}
 
         {!person ? (
           <div className="card card-pad" style={{ maxWidth: 420 }}>
@@ -777,12 +837,30 @@ export default function AdminPage() {
               </button>
             </div>
           </div>
-        ) : !session ? (
-          <div className="card card-pad" style={{ maxWidth: 480 }}>
-            <h2 className="section-title">Start a tutorial call</h2>
+        ) : !session || showNewSessionForm ? (
+          <div className="card card-pad" style={{ maxWidth: 520 }}>
+            <h2 className="section-title">
+              {session?.status === "active"
+                ? "Start a new tutorial call"
+                : "Start a tutorial call"}
+            </h2>
             <p className="muted" style={{ marginTop: 0, fontSize: "0.9rem" }}>
-              Teachers join with a code and upload class lists. As they load
-              rosters, your complete schoolwide roster builds automatically.
+              {session?.status === "active" ? (
+                <>
+                  Current live code is{" "}
+                  <strong className="code-pill" style={{ fontSize: "0.95rem" }}>
+                    {session.joinCode}
+                  </strong>
+                  . Starting a new call closes that code and creates a fresh one
+                  — use this only if the code was shared too widely or
+                  compromised.
+                </>
+              ) : (
+                <>
+                  Teachers join with a code and upload class lists. As they load
+                  rosters, your complete schoolwide roster builds automatically.
+                </>
+              )}
             </p>
             <div className="stack">
               <div className="field">
@@ -794,13 +872,30 @@ export default function AdminPage() {
                   placeholder="Schoolwide Tutorial"
                 />
               </div>
-              <button
-                className="btn btn-primary"
-                disabled={!sessionName.trim() || loading}
-                onClick={startSession}
-              >
-                Start session & generate code
-              </button>
+              <div className="row">
+                <button
+                  className="btn btn-primary"
+                  disabled={!sessionName.trim() || loading}
+                  onClick={async () => {
+                    await startSession();
+                    setShowNewSessionForm(false);
+                  }}
+                >
+                  {session?.status === "active"
+                    ? "Close old code & start new call"
+                    : "Start session & generate code"}
+                </button>
+                {session ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={loading}
+                    onClick={() => setShowNewSessionForm(false)}
+                  >
+                    Cancel — keep current call
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
         ) : (
@@ -858,13 +953,23 @@ export default function AdminPage() {
                     Refresh
                   </button>
                   {session.status === "active" ? (
-                    <button
-                      className="btn btn-danger btn-sm"
-                      onClick={closeSession}
-                      disabled={loading}
-                    >
-                      Close session
-                    </button>
+                    <>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={closeSession}
+                        disabled={loading}
+                      >
+                        Close session
+                      </button>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={beginNewSessionForm}
+                        disabled={loading}
+                        title="Issue a new join code if this one was compromised"
+                      >
+                        New code (if compromised)
+                      </button>
+                    </>
                   ) : (
                     <>
                       <button
@@ -885,13 +990,22 @@ export default function AdminPage() {
                   )}
                 </div>
               </div>
-              {session.status !== "active" ? (
+              {session.status === "active" ? (
+                <p
+                  className="muted"
+                  style={{ marginTop: "0.85rem", marginBottom: 0, fontSize: "0.85rem" }}
+                >
+                  After sign-out, signing back in returns you to this live call.
+                  Use <strong>New code (if compromised)</strong> only when you
+                  need a fresh join code.
+                </p>
+              ) : (
                 <div className="error-banner" style={{ marginTop: "1rem" }}>
                   Teachers will see “invalid or inactive join code” until you
                   click <strong>Reopen session</strong> (keeps the same code and
                   data) or <strong>Start new session</strong> (new code).
                 </div>
-              ) : null}
+              )}
             </div>
 
             {/* Day + search */}
