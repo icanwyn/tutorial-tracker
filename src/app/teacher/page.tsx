@@ -91,6 +91,8 @@ export default function TeacherPage() {
   const [tab, setTab] = useState<
     "offers" | "roster" | "assign" | "attendance" | "calendar"
   >("offers");
+  /** Bumps when teacher opens Priority calendar so we scroll to today */
+  const [calendarFocusToken, setCalendarFocusToken] = useState(0);
   const [myOffers, setMyOffers] = useState<
     {
       id: string;
@@ -762,7 +764,18 @@ export default function TeacherPage() {
                 <button
                   type="button"
                   className={`pinned-tab ${tab === "calendar" ? "active" : ""}`}
-                  onClick={() => setTab("calendar")}
+                  onClick={() => {
+                    setTab("calendar");
+                    setCalendarFocusToken((n) => n + 1);
+                    requestAnimationFrame(() => {
+                      document
+                        .getElementById("teacher-calendar-section")
+                        ?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                        });
+                    });
+                  }}
                 >
                   Priority calendar
                 </button>
@@ -881,13 +894,13 @@ export default function TeacherPage() {
             <PriorityCalendarStrip sessionId={session.id} />
 
             {tab === "calendar" ? (
-              <div className="stack">
+              <div className="stack" id="teacher-calendar-section">
                 <div className="card card-pad">
                   <p className="muted" style={{ margin: 0, fontSize: "0.9rem" }}>
                     Click a weekday to publish an offering for that date. It
                     appears under <strong>My offerings → Your published
                     offerings</strong> (with the date). Students only see the
-                    current week.
+                    current week. Opens on <strong>this week / today</strong>.
                   </p>
                 </div>
                 <div className="card card-pad">
@@ -895,6 +908,7 @@ export default function TeacherPage() {
                     mode="teacher"
                     teacherId={person?.id}
                     sessionId={session.id}
+                    focusTodayToken={calendarFocusToken}
                     onOfferChanged={() => {
                       void loadMyOffers();
                       setSuccess(

@@ -1184,15 +1184,51 @@ export async function findOrCreateStudent(
   });
 }
 
-export async function getStudent(id: string): Promise<Student | undefined> {
-  const db = await readDb();
+/** Find student by internal id or school SIS id */
+export function findStudentInDb(
+  db: Database,
+  id: string
+): Student | undefined {
+  if (!id) return undefined;
   const key = normSchoolId(id);
   return db.students.find(
     (s) =>
       s.id === id ||
       normSchoolId(s.id) === key ||
-      (s.schoolId && normSchoolId(s.schoolId) === key)
+      (s.schoolId != null &&
+        s.schoolId !== "" &&
+        normSchoolId(s.schoolId) === key)
   );
+}
+
+/** Display names with snapshot fallback from assignment */
+export function studentDisplayName(
+  db: Database,
+  studentId: string,
+  snapshot?: { firstName?: string | null; lastName?: string | null }
+): { firstName: string; lastName: string } {
+  const s = findStudentInDb(db, studentId);
+  if (s?.firstName?.trim() || s?.lastName?.trim()) {
+    return {
+      firstName: s.firstName?.trim() || "—",
+      lastName: s.lastName?.trim() || "—",
+    };
+  }
+  if (snapshot?.firstName?.trim() || snapshot?.lastName?.trim()) {
+    return {
+      firstName: snapshot.firstName?.trim() || "—",
+      lastName: snapshot.lastName?.trim() || "—",
+    };
+  }
+  // Last resort: show short id so list isn't "?, ?"
+  const short =
+    studentId.length > 10 ? `${studentId.slice(0, 8)}…` : studentId || "Unknown";
+  return { firstName: short, lastName: "" };
+}
+
+export async function getStudent(id: string): Promise<Student | undefined> {
+  const db = await readDb();
+  return findStudentInDb(db, id);
 }
 
 export async function listStudents(query?: string): Promise<Student[]> {
@@ -1394,11 +1430,11 @@ export async function getTeacherRoster(
   return db.roster
     .filter((r) => r.sessionId === sessionId && r.teacherId === teacherId)
     .map((r) => {
-      const s = db.students.find((x) => x.id === r.studentId);
+      const names = studentDisplayName(db, r.studentId);
       return {
         ...r,
-        firstName: s?.firstName ?? "?",
-        lastName: s?.lastName ?? "?",
+        firstName: names.firstName,
+        lastName: names.lastName,
       };
     })
     .sort(
@@ -1462,9 +1498,9 @@ export async function setAssignments(params: {
     const taken: AssignmentResult["taken"] = [];
 
     for (const sid of studentIds) {
-      const student = db.students.find((s) => s.id === sid);
-      const firstName = student?.firstName ?? "?";
-      const lastName = student?.lastName ?? "?";
+      const names = studentDisplayName(db, sid);
+      const firstName = names.firstName;
+      const lastName = names.lastName;
 
       for (const day of days) {
         // Upsert this teacher's claim (do not wipe other teachers' claims)
@@ -1478,6 +1514,8 @@ export async function setAssignments(params: {
         let claim: Assignment;
         if (existingMine) {
           existingMine.type = type;
+          existingMine.studentFirstName = firstName;
+          existingMine.studentLastName = lastName;
           claim = existingMine;
         } else {
           claim = {
@@ -1487,6 +1525,8 @@ export async function setAssignments(params: {
             studentId: sid,
             day,
             type,
+            studentFirstName: firstName,
+            studentLastName: lastName,
             createdAt: new Date().toISOString(),
           };
           db.assignments.push(claim);
@@ -1905,7 +1945,16 @@ export async function getTeacherDayRoster(
     const rows = [];
     for (const a of claims) {
       const winner = pickEffectiveClaim(db, sessionId, a.studentId, day);
-      const s = db.students.find((x) => x.id === a.studentId);
+      const names = studentDisplayName(db, a.studentId, {
+        firstName: a.studentFirstName,
+        lastName: a.studentLastName,
+      });
+      // Heal snapshot if we resolved a real student
+      const live = findStudentInDb(db, a.studentId);
+      if (live) {
+        a.studentFirstName = live.firstName;
+        a.studentLastName = live.lastName;
+      }
 
       const requiredClaimants = db.assignments.filter(
         (x) =>
@@ -1957,8 +2006,8 @@ export async function getTeacherDayRoster(
       rows.push({
         assignmentId: a.id,
         studentId: a.studentId,
-        firstName: s?.firstName ?? "?",
-        lastName: s?.lastName ?? "?",
+        firstName: names.firstName,
+        lastName: names.lastName,
         type: a.type,
         attendanceStatus: att?.status ?? ("unmarked" as const),
         attendanceId: att?.id ?? null,
@@ -2065,11 +2114,15 @@ export async function getTeacherAssignments(
   }
   return [...byStudent.entries()]
     .map(([sid, days]) => {
-      const s = db.students.find((x) => x.id === sid);
+      const snap = mine.find((a) => a.studentId === sid);
+      const names = studentDisplayName(db, sid, {
+        firstName: snap?.studentFirstName,
+        lastName: snap?.studentLastName,
+      });
       return {
         studentId: sid,
-        firstName: s?.firstName ?? "?",
-        lastName: s?.lastName ?? "?",
+        firstName: names.firstName,
+        lastName: names.lastName,
         days: days.sort(
           (a, b) =>
             ["Mon", "Tue", "Wed", "Thu", "Fri"].indexOf(a.day) -

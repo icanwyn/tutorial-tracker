@@ -166,6 +166,9 @@ export interface Assignment {
   type: AssignmentType;
   /** Which teacher offer they signed into (open list / auto-place) */
   offerId?: string | null;
+  /** Snapshot so attendance still shows a name if student row is missing */
+  studentFirstName?: string | null;
+  studentLastName?: string | null;
   createdAt: string;
 }
 

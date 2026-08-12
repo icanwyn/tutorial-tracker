@@ -61,6 +61,8 @@ type Props = {
   onWeekChange?: (weekOf: string) => void;
   /** Called after a teacher successfully creates/updates/deletes an offering */
   onOfferChanged?: () => void;
+  /** Jump to this week and scroll to today (e.g. teacher opens Priority calendar) */
+  focusTodayToken?: number;
 };
 
 export function YearCalendar({
@@ -69,11 +71,12 @@ export function YearCalendar({
   sessionId,
   onWeekChange,
   onOfferChanged,
+  focusTodayToken = 0,
 }: Props) {
   /** Students only ever see one week at a time — no month grid */
   const studentWeekOnly = mode === "student";
   const [view, setView] = useState<"month" | "week">(
-    studentWeekOnly ? "week" : "month"
+    studentWeekOnly || mode === "teacher" ? "week" : "month"
   );
   const [year, setYear] = useState(() => new Date().getFullYear());
   const [month, setMonth] = useState(() => new Date().getMonth() + 1);
@@ -81,11 +84,34 @@ export function YearCalendar({
   const [data, setData] = useState<YearCalData | null>(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const todayCellRef = useRef<HTMLButtonElement | null>(null);
 
   // Keep students locked to week view even if state is toggled somehow
   useEffect(() => {
     if (studentWeekOnly && view !== "week") setView("week");
   }, [studentWeekOnly, view]);
+
+  // Jump to current week / today when teacher opens the Priority calendar tab
+  useEffect(() => {
+    if (!focusTodayToken) return;
+    const now = new Date();
+    setYear(now.getFullYear());
+    setMonth(now.getMonth() + 1);
+    setWeekOf(mondayOfWeek());
+    setView("week");
+  }, [focusTodayToken]);
+
+  useEffect(() => {
+    if (!focusTodayToken || !data) return;
+    const t = window.setTimeout(() => {
+      todayCellRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "center",
+      });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [focusTodayToken, data]);
 
   // Admin priority popover (appears at click)
   const [editDate, setEditDate] = useState<string | null>(null);
@@ -525,6 +551,7 @@ export function YearCalendar({
                 <button
                   key={c.date}
                   type="button"
+                  ref={c.isToday ? todayCellRef : undefined}
                   disabled={!clickable}
                   data-cal-day={c.date}
                   onClick={(e) => {
@@ -647,6 +674,7 @@ export function YearCalendar({
               <button
                 key={d.date}
                 type="button"
+                ref={d.isToday ? todayCellRef : undefined}
                 data-cal-day={d.date}
                 onClick={(e) => {
                   if (mode === "admin") openAdminDay(d.date, undefined, e);
