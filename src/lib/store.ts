@@ -1803,6 +1803,7 @@ export async function studentSelfSignup(params: {
         )
     );
 
+    const names = studentDisplayName(db, studentId);
     const assignment: Assignment = {
       id: uid("asn"),
       sessionId,
@@ -1811,6 +1812,8 @@ export async function studentSelfSignup(params: {
       day,
       type: "open_study",
       offerId: offer.id,
+      studentFirstName: names.firstName,
+      studentLastName: names.lastName,
       createdAt: new Date().toISOString(),
     };
     db.assignments.push(assignment);
@@ -1904,6 +1907,7 @@ export async function saveStudentChoice(params: {
         a.teacherId === params.teacherId
     );
     if (!has) {
+      const names = studentDisplayName(db, params.studentId);
       db.assignments.push({
         id: uid("asn"),
         sessionId: params.sessionId,
@@ -1911,6 +1915,8 @@ export async function saveStudentChoice(params: {
         studentId: params.studentId,
         day: params.day,
         type: "student_choice",
+        studentFirstName: names.firstName,
+        studentLastName: names.lastName,
         createdAt: choice.createdAt,
       });
     }
@@ -3104,6 +3110,8 @@ export async function autoPlaceUnassigned(params: {
         day,
         type: "open_study",
         offerId: pick.id,
+        studentFirstName: student.firstName,
+        studentLastName: student.lastName,
         createdAt: new Date().toISOString(),
       });
       ensureAttendanceShell(db, sessionId, pick.teacherId, sid, day);
