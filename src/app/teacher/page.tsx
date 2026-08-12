@@ -17,6 +17,7 @@ import {
 } from "@/lib/client";
 import { YearCalendar } from "@/components/YearCalendar";
 import { PriorityCalendarStrip } from "@/components/PriorityCalendar";
+import { StorageBanner } from "@/components/StorageBanner";
 import type {
   AttendanceStatus,
   DayOfWeek,
@@ -815,6 +816,7 @@ export default function TeacherPage() {
         }
       />
       <main className="container stack" style={{ padding: "1.5rem 0 3rem" }}>
+        <StorageBanner />
         {error ? <div className="error-banner">{error}</div> : null}
         {success ? <div className="success-banner">{success}</div> : null}
 

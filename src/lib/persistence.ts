@@ -36,10 +36,7 @@ export function emptyDb(): Database {
 }
 
 export function hasSupabase(): boolean {
-  return !!(
-    (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) &&
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
+  return !!(supabaseUrl() && process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
 }
 
 export function hasRedis(): boolean {
@@ -73,11 +70,19 @@ async function writeFileDb(file: string, db: Database): Promise<void> {
 }
 
 function supabaseUrl(): string {
-  return (
+  // Accept common typo UPABASE_URL (missing S) so misconfigured Vercel still works
+  const url = (
     process.env.SUPABASE_URL ||
     process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.UPABASE_URL ||
     ""
   ).trim();
+  if (!process.env.SUPABASE_URL && process.env.UPABASE_URL) {
+    console.warn(
+      "[tutorial-tracker] Env var is named UPABASE_URL (typo). Prefer SUPABASE_URL."
+    );
+  }
+  return url;
 }
 
 async function getSupabaseAdmin() {

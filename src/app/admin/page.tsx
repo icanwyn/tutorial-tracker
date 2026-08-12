@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { TopBar } from "@/components/TopBar";
 import { StatusBadge } from "@/components/StatusBadge";
+import { StorageBanner } from "@/components/StorageBanner";
 import {
   api,
   clearPerson,
@@ -761,6 +762,7 @@ export default function AdminPage() {
         }
       />
       <main className="container stack" style={{ padding: "1.5rem 0 3rem" }}>
+        <StorageBanner />
         {error ? <div className="error-banner">{error}</div> : null}
         {success ? <div className="success-banner">{success}</div> : null}
 
