@@ -3,18 +3,25 @@ import { storageMode } from "@/lib/store";
 
 export async function GET() {
   const mode = storageMode();
-  return NextResponse.json({
-    ok: true,
-    storage: mode,
-    multiDevice:
-      mode === "redis"
+  const multiDevice =
+    mode === "supabase"
+      ? "yes — shared Supabase Postgres"
+      : mode === "redis"
         ? "yes — shared Redis"
         : mode === "file"
           ? "yes — same server (local file)"
-          : "limited — Vercel without Redis does not share data across devices reliably",
-    hint:
-      mode === "memory-vercel"
-        ? "Add UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN in Vercel env for multi-device testing"
-        : undefined,
+          : "limited — add Supabase env vars for multi-device";
+
+  let hint: string | undefined;
+  if (mode === "memory-vercel") {
+    hint =
+      "Add SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (run supabase/schema.sql first)";
+  }
+
+  return NextResponse.json({
+    ok: true,
+    storage: mode,
+    multiDevice,
+    hint,
   });
 }

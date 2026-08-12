@@ -51,44 +51,73 @@ Open [http://localhost:3000](http://localhost:3000).
 
 - **Next.js** (App Router) + TypeScript + Tailwind  
 - **Shared data store** (not browser localStorage for school data):
-  - **Local:** `data/db.json` on the machine running the server  
-  - **Vercel multi-device:** [Upstash Redis](https://console.upstash.com) via `UPSTASH_REDIS_*` env vars  
+  - **Local:** `data/db.json`  
+  - **Online multi-device (recommended):** [Supabase](https://supabase.com) Postgres  
+  - **Optional fallback:** Upstash Redis  
 - Client **identity only** (admin/teacher name, student ID) is in `localStorage` per browser  
 
-### Will this work on multiple devices without a database?
+### Set up Supabase (what to do and where)
+
+You already have a Supabase account. Do this once:
+
+#### 1. Create or open a project
+- Go to [https://supabase.com/dashboard](https://supabase.com/dashboard)  
+- **New project** (or open an existing one)  
+- Note the region; wait until the project is ready  
+
+#### 2. Create the table
+- Left sidebar → **SQL Editor** → **New query**  
+- Open this repo file: [`supabase/schema.sql`](./supabase/schema.sql)  
+- Paste the whole file → **Run**  
+- You should see success; Table Editor should show **`app_state`** with one row `id = main`  
+
+#### 3. Copy API keys
+- Left sidebar → **Project Settings** (gear) → **API**  
+- Copy:
+  - **Project URL** → `SUPABASE_URL`  
+  - **`service_role`** key (secret) → `SUPABASE_SERVICE_ROLE_KEY`  
+- **Do not** put `service_role` in the browser or `NEXT_PUBLIC_*` — server only  
+
+#### 4. Local testing
+Create `tutorial-tracker/.env.local`:
+
+```bash
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOi...your-service-role...
+ADMIN_PASSWORD=pick-a-strong-password
+BOOTSTRAP_ADMIN_NAMES=Your Name
+```
+
+```bash
+npm run dev
+curl http://localhost:3000/api/health
+# expect: "storage":"supabase"
+```
+
+#### 5. Vercel (production)
+- [vercel.com](https://vercel.com) → project **tutorial-tracker** → **Settings** → **Environment Variables**  
+- Add for **Production** (and Preview if you want):
+  - `SUPABASE_URL`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+  - `ADMIN_PASSWORD` (recommended)
+  - `BOOTSTRAP_ADMIN_NAMES` (optional)  
+- **Redeploy** (Deployments → … → Redeploy)  
+- Check: `https://tutorial-tracker.vercel.app/api/health`  
+  - Should say `"storage":"supabase"` and multi-device **yes**
 
 | Setup | Shared live data across phones? |
 |-------|----------------------------------|
-| One laptop `npm run dev`, phones on same Wi‑Fi hit your laptop IP | **Yes** (file store) |
-| Vercel **with** Upstash Redis env vars | **Yes** (recommended) |
-| Vercel **without** Redis | **No** — serverless has no durable shared disk; data can reset or stay isolated per instance |
-
-Browser localStorage only remembers *who you are* on that device. Rosters, rooms, and attendance live on the server store.
+| Laptop `npm run dev` only | Yes (file) on same Wi‑Fi |
+| Vercel + **Supabase** | **Yes** (recommended) |
+| Vercel with no Supabase/Redis | **No** |
 
 ### Admin password
 
-Right now an authorized **name** is required; the login form no longer lists bootstrap names.
-
-Set a site password for production:
-
 ```bash
-# .env.local or Vercel env
 ADMIN_PASSWORD=your-strong-secret
 ```
 
-When `ADMIN_PASSWORD` is set, admin sign-in needs **name + password**. Teachers/students are unchanged. Later we can add per-admin passwords and signed sessions.
-
-### Deploy (GitHub + Vercel)
-
-1. Push this repo to GitHub  
-2. Import the project in [vercel.com](https://vercel.com)  
-3. Create a free Upstash Redis DB → copy REST URL + token into Vercel **Environment Variables**  
-4. Redeploy  
-
-```bash
-# Health check after deploy
-curl https://YOUR_APP.vercel.app/api/health
-```
+When set, admin sign-in needs **name + password**. Teachers/students unchanged.
 
 ## API sketch
 
