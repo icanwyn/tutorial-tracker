@@ -42,7 +42,16 @@ export async function POST(req: NextRequest) {
     }
 
     const admin = await getPerson(adminId);
-    if (!admin || admin.role !== "admin") {
+    if (!admin) {
+      return NextResponse.json(
+        {
+          error:
+            "Admin account not found on the server. Sign out and sign in again (your browser may have an old login from before Supabase).",
+        },
+        { status: 403 }
+      );
+    }
+    if (admin.role !== "admin") {
       return NextResponse.json(
         { error: "Only admins can start a session" },
         { status: 403 }

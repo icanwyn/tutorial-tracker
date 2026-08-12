@@ -197,36 +197,56 @@ export default function AdminPage() {
 
       const p = loadPerson();
       let admin = p?.role === "admin" ? p : null;
-      // If a site password is required, don't auto-resume from localStorage alone
-      // (avoids anyone with the device staying admin forever without re-auth).
-      // Soft: still try resume; full password gate is on new sign-in. For stronger
-      // lock, clear person when password required.
-      if (admin) {
-        setPerson(admin);
-        setName(admin.name);
-      }
-      const sid = loadSessionId();
-      try {
-        // Prefer an active session (not a stale closed code in localStorage)
-        const q = new URLSearchParams();
-        if (admin?.id) q.set("adminId", admin.id);
-        if (sid) q.set("sessionId", sid);
-        const data = await api<{ session: TutorialSession | null }>(
-          `/api/sessions?${q.toString()}`
-        );
-        if (data.session) {
-          setSession(data.session);
-          saveSessionId(data.session.id);
+
+      // Re-validate against server DB (Supabase). Stale localStorage IDs from
+      // before Supabase was connected cause "Only admins can start a session".
+      if (admin?.id) {
+        try {
+          const live = await api<{ person: Person }>(
+            `/api/auth?id=${encodeURIComponent(admin.id)}`
+          );
+          if (live.person?.role === "admin") {
+            admin = live.person;
+            savePerson(live.person);
+            setPerson(live.person);
+            setName(live.person.name);
+          } else {
+            admin = null;
+            clearPerson();
+          }
+        } catch {
+          admin = null;
+          clearPerson();
+          setError(
+            "Previous admin login is no longer valid on the server. Sign in again with your name (and password if set)."
+          );
         }
-      } catch {
-        if (sid) {
-          try {
-            const d = await api<{ session: TutorialSession }>(
-              `/api/sessions/${sid}`
-            );
-            setSession(d.session);
-          } catch {
-            /* ignore */
+      }
+
+      const sid = loadSessionId();
+      if (admin) {
+        try {
+          // Prefer an active session (not a stale closed code in localStorage)
+          const q = new URLSearchParams();
+          q.set("adminId", admin.id);
+          if (sid) q.set("sessionId", sid);
+          const data = await api<{ session: TutorialSession | null }>(
+            `/api/sessions?${q.toString()}`
+          );
+          if (data.session) {
+            setSession(data.session);
+            saveSessionId(data.session.id);
+          }
+        } catch {
+          if (sid) {
+            try {
+              const d = await api<{ session: TutorialSession }>(
+                `/api/sessions/${sid}`
+              );
+              setSession(d.session);
+            } catch {
+              /* ignore */
+            }
           }
         }
       }
@@ -688,9 +708,10 @@ export default function AdminPage() {
           <div className="card card-pad" style={{ maxWidth: 420 }}>
             <h2 className="section-title">Admin sign-in</h2>
             <p className="muted" style={{ marginTop: 0, fontSize: "0.9rem" }}>
-              Sign in with an authorized admin name
-              {passwordRequired ? " and the site admin password" : ""}. After
-              you sign in, you can grant other admins access by name.
+              Sign in with your name
+              {passwordRequired ? " and the admin password" : ""}. If this is a
+              brand-new database, the first sign-in becomes the first admin.
+              After that, you can grant other admins access by name.
             </p>
             <div className="stack">
               <div className="field">

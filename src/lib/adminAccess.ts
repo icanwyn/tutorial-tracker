@@ -9,7 +9,13 @@ export function normAdminName(s: string): string {
 export function canBecomeAdmin(db: Database, name: string): boolean {
   if (isBootstrapAdminName(name)) return true;
   const n = normAdminName(name);
-  return db.adminGrants.some((g) => normAdminName(g.name) === n);
+  if (db.adminGrants.some((g) => normAdminName(g.name) === n)) return true;
+  // Empty school DB: first successful admin sign-in becomes the bootstrap admin
+  // (secure when ADMIN_PASSWORD is set; for local empty demos allows any name once)
+  const hasAnyAdmin =
+    db.people.some((p) => p.role === "admin") || db.adminGrants.length > 0;
+  if (!hasAnyAdmin) return true;
+  return false;
 }
 
 export function listAllowedAdminNames(db: Database): string[] {
