@@ -4,7 +4,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
 import type { DayOfWeek, GradeLevel, RoomAccessMode } from "@/lib/types";
 import { DEFAULT_SUBJECTS } from "@/lib/types";
-import { addMonths, mondayOfWeek } from "@/lib/dates";
+import {
+  addMonths,
+  dayOfWeekFromDate,
+  formatShortDate,
+  mondayOfWeek,
+} from "@/lib/dates";
+
+function formatOfferDate(iso: string): string {
+  const day = dayOfWeekFromDate(iso);
+  const md = formatShortDate(iso); // e.g. Aug 12
+  return day ? `${day} · ${md}` : md;
+}
 
 type YearCalData = {
   schoolYear: { label: string; startDate: string; endDate: string };
@@ -506,7 +517,7 @@ export function YearCalendar({
         {mode === "teacher" &&
           "Click a day to add an offering in advance. Students only see one week at a time."}
         {mode === "student" &&
-          "Showing one week at a time. Use ← Week / Week → to change weeks. Open signup is for free days only."}
+          "Offerings for this week. Use ← Week / Week → to browse other weeks. Open signup is on free days only."}
       </p>
 
       {/* Month view (admin / teacher only) */}
@@ -663,100 +674,124 @@ export function YearCalendar({
             </div>
           ) : null}
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-              gap: 10,
-            }}
-          >
-            {data.weekDays.map((d) => (
-              <button
-                key={d.date}
-                type="button"
-                ref={d.isToday ? todayCellRef : undefined}
-                data-cal-day={d.date}
-                onClick={(e) => {
-                  if (mode === "admin") openAdminDay(d.date, undefined, e);
-                  else if (mode === "teacher") openTeacherDay(d.date, e);
-                }}
-                style={{
-                  textAlign: "left",
-                  border: d.isToday
-                    ? "2px solid var(--brand)"
-                    : "1px solid var(--border)",
-                  borderRadius: 14,
-                  padding: "0.9rem",
-                  background:
-                    d.dayType === "no_tutorial"
-                      ? "rgba(201,162,39,0.12)"
-                      : d.primarySubject
-                        ? "linear-gradient(180deg,rgba(201,162,39,0.12),var(--surface) 70%)"
-                        : "var(--surface)",
-                  cursor:
-                    mode === "student" ? "default" : "pointer",
-                  boxShadow: "var(--shadow)",
-                }}
-              >
-                <div className="row" style={{ justifyContent: "space-between" }}>
-                  <strong>{d.day}</strong>
-                  {d.isToday ? (
-                    <span className="badge badge-blue">Today</span>
-                  ) : null}
-                </div>
-                <div className="muted" style={{ fontSize: "0.8rem" }}>
-                  {d.dateLabel}
-                </div>
-                <div
+          {/* Day cards — admin/teacher only (redundant for students) */}
+          {mode !== "student" ? (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                gap: 10,
+              }}
+            >
+              {data.weekDays.map((d) => (
+                <button
+                  key={d.date}
+                  type="button"
+                  ref={d.isToday ? todayCellRef : undefined}
+                  data-cal-day={d.date}
+                  onClick={(e) => {
+                    if (mode === "admin") openAdminDay(d.date, undefined, e);
+                    else if (mode === "teacher") openTeacherDay(d.date, e);
+                  }}
                   style={{
-                    marginTop: 10,
-                    fontWeight: 750,
-                    fontSize: "1.05rem",
-                    color:
+                    textAlign: "left",
+                    border: d.isToday
+                      ? "2px solid var(--brand)"
+                      : "1px solid var(--border)",
+                    borderRadius: 14,
+                    padding: "0.9rem",
+                    background:
                       d.dayType === "no_tutorial"
-                        ? "var(--warn)"
+                        ? "rgba(201,162,39,0.12)"
                         : d.primarySubject
-                          ? "var(--brand)"
-                          : "var(--muted)",
+                          ? "linear-gradient(180deg,rgba(201,162,39,0.12),var(--surface) 70%)"
+                          : "var(--surface)",
+                    cursor: "pointer",
+                    boxShadow: "var(--shadow)",
                   }}
                 >
-                  {d.dayType === "no_tutorial"
-                    ? "No tutorial"
-                    : d.primarySubject || "No priority"}
-                </div>
-                <div className="muted" style={{ fontSize: "0.75rem", marginTop: 6 }}>
-                  {d.offerCount} offering{d.offerCount === 1 ? "" : "s"}
-                  {d.openOfferCount ? ` · ${d.openOfferCount} open` : ""}
-                </div>
-                {d.note ? (
-                  <div className="muted" style={{ fontSize: "0.72rem", marginTop: 4 }}>
-                    {d.note}
+                  <div
+                    className="row"
+                    style={{ justifyContent: "space-between" }}
+                  >
+                    <strong>{d.day}</strong>
+                    {d.isToday ? (
+                      <span className="badge badge-blue">Today</span>
+                    ) : null}
                   </div>
-                ) : null}
-              </button>
-            ))}
-          </div>
+                  <div className="muted" style={{ fontSize: "0.8rem" }}>
+                    {d.dateLabel}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 10,
+                      fontWeight: 750,
+                      fontSize: "1.05rem",
+                      color:
+                        d.dayType === "no_tutorial"
+                          ? "var(--warn)"
+                          : d.primarySubject
+                            ? "var(--brand)"
+                            : "var(--muted)",
+                    }}
+                  >
+                    {d.dayType === "no_tutorial"
+                      ? "No tutorial"
+                      : d.primarySubject || "No priority"}
+                  </div>
+                  <div
+                    className="muted"
+                    style={{ fontSize: "0.75rem", marginTop: 6 }}
+                  >
+                    {d.offerCount} offering{d.offerCount === 1 ? "" : "s"}
+                    {d.openOfferCount ? ` · ${d.openOfferCount} open` : ""}
+                  </div>
+                  {d.note ? (
+                    <div
+                      className="muted"
+                      style={{ fontSize: "0.72rem", marginTop: 4 }}
+                    >
+                      {d.note}
+                    </div>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
-          {/* Week offerings list (students + everyone) */}
-          <div className="card">
-            <div className="card-pad" style={{ paddingBottom: 0 }}>
+          {/* Week offerings list */}
+          <div className={mode === "student" ? undefined : "card"}>
+            <div
+              className={mode === "student" ? undefined : "card-pad"}
+              style={
+                mode === "student"
+                  ? { paddingBottom: 0 }
+                  : { paddingBottom: 0 }
+              }
+            >
               <h3 className="section-title">
                 Offerings this week ({data.weekOffers.length})
               </h3>
-              <p className="muted" style={{ margin: "0 0 0.5rem", fontSize: "0.85rem" }}>
+              <p
+                className="muted"
+                style={{ margin: "0 0 0.5rem", fontSize: "0.85rem" }}
+              >
                 {mode === "student"
-                  ? "Choose an open room on a free day. Required placements are set by teachers."
+                  ? "Open rooms you can choose on free days. Required placements are set by teachers."
                   : "Compiled like the department handout for this week."}
               </p>
             </div>
             {data.weekOffers.length === 0 ? (
               <div className="empty">No offerings scheduled this week yet.</div>
             ) : (
-              <div className="table-wrap" style={{ border: "none" }}>
+              <div
+                className="table-wrap"
+                style={{ border: mode === "student" ? "1px solid var(--border)" : "none" }}
+              >
                 <table className="data">
                   <thead>
                     <tr>
-                      <th>Date</th>
+                      <th>Day / date</th>
                       <th>Grade</th>
                       <th>Subject</th>
                       <th>Unit / title</th>
@@ -769,7 +804,9 @@ export function YearCalendar({
                   <tbody>
                     {data.weekOffers.map((o) => (
                       <tr key={o.id}>
-                        <td>{o.date}</td>
+                        <td>
+                          <strong>{formatOfferDate(o.date)}</strong>
+                        </td>
                         <td>{o.grades.join("/")}</td>
                         <td>{o.subject}</td>
                         <td>{o.unitTitle}</td>

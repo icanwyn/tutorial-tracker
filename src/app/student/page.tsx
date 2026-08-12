@@ -30,11 +30,10 @@ function formatDayDate(weekOf: string | undefined, day: DayOfWeek): string {
   if (!weekOf) return day;
   const iso = dateForDay(weekOf, day);
   const d = new Date(iso + "T12:00:00");
-  return d.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-  });
+  // e.g. "Mon · Aug 12"
+  const weekday = d.toLocaleDateString("en-US", { weekday: "short" });
+  const md = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return `${weekday} · ${md}`;
 }
 
 function formatRemain(ms: number): string {
@@ -930,11 +929,6 @@ export default function StudentPage() {
             </div>
 
             <div className="card card-pad">
-              <h3 className="section-title">This week&apos;s offerings</h3>
-              <p className="muted" style={{ margin: "0 0 0.75rem", fontSize: "0.9rem" }}>
-                One week at a time. Use the arrows to move weeks. Signup for open
-                rooms is for free days only.
-              </p>
               <YearCalendar mode="student" sessionId={sessionId || undefined} />
             </div>
 
